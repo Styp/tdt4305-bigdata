@@ -26,5 +26,6 @@ booking.map(value => value.mkString.splitAt(1)._2).foreach {x => if x.toString.c
 
 
 // Soltuion:
-booking.map(value => value.mkString.replaceAll(",","").splitAt(1)._2.toDouble).reduce(_+_)
+val aggregatedAverage = booking.map(value => value.mkString.replaceAll(",","").splitAt(1)._2.toDouble).map(a => (a,1)).reduce((a,b) => (a._1+b._1,a._2+b._2));
+val averagePerNight = aggreagatedAverage._1 / aggregatedAverage._2;
 
