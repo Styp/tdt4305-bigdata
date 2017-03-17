@@ -1,7 +1,10 @@
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkConf
 
-val rawData = spark.read.option("delimiter", "\t").option("header", true).csv("/home/jonas/Downloads/listings_us.csv")
+//val rawData = spark.read.option("delimiter", "\t").option("header", true).csv("/home/jonas/Downloads/listings_us.csv")
+
+val rawData = spark.read.option("delimiter", "\t").option("header", true).csv("/home/martin/Desktop/tdt4305-bigdata/data/listings_us.csv")
+
 val sample = rawData.sample(false ,0.05, 7)
 val booking = sample.select("price")
 
@@ -20,3 +23,8 @@ booking.flatMap(value => value.split("$").map(value => (value._2)))
 
 booking.map(value => value.mkString.splitAt(1)._2).filter(_.toString.contains(","))
 booking.map(value => value.mkString.splitAt(1)._2).foreach {x => if x.toString.contains(",") x.toString.split(",")}
+
+
+// Soltuion:
+booking.map(value => value.mkString.replaceAll(",","").splitAt(1)._2.toDouble).reduce(_+_)
+
