@@ -29,11 +29,14 @@ booking.map(value => value.mkString.splitAt(1)._2).foreach {x => if x.toString.c
 val aggregatedAverage = booking.map(value => value.mkString.replaceAll(",","").splitAt(1)._2.toDouble).map(a => (a,1)).reduce((a,b) => (a._1+b._1,a._2+b._2));
 val averagePerNight = aggreagatedAverage._1 / aggregatedAverage._2;
 
+/** 3d
+val nightsBooked = listings.select("reviews_per_month").filter(col("reviews_per_month").isNotNull).map(a => a.toString.replace("[","").replace("]","").toDouble).reduce(_+_) / 7 * 10 * 3 * 12
+*/
 
 /** 4a
 val globalAvg = rawData.groupBy("host_id").count.select("count").map(value => value.mkString.toDouble).reduce(_+_) / rawData.groupBy("host_id").count.orderBy(desc("count")).count
 */
 
 /** 4b
-*val percentage = rawData.groupBy("host_id").count.filter(col("count") > 1).count.toDouble / rawData.groupBy("host_id").count.count * 100
+val percentage = rawData.groupBy("host_id").count.filter(col("count") > 1).count.toDouble / rawData.groupBy("host_id").count.count * 100
 */
