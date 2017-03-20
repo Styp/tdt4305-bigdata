@@ -51,3 +51,6 @@ val globalAvg = rawData.groupBy("host_id").count.select("count").map(value => va
 /** 4b
 val percentage = rawData.groupBy("host_id").count.filter(col("count") > 1).count.toDouble / rawData.groupBy("host_id").count.count * 100
 */
+
+
+val rich = calendar.filter(col("available").equalTo("t")).join(listings,$"listing_id" === $"id").groupBy("host_id","price").count.map(v => (v.get(0).asInstanceOf[String],v.get(1).asInstanceOf[String].replace("$","").replaceAll(",","").toDouble * v.get(2).asInstanceOf[Long])).groupBy("_1").sum("_2").orderBy(desc("sum(_2)"))
