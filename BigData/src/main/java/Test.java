@@ -4,6 +4,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.scheduler.cluster.CoarseGrainedClusterMessages;
 import py4j.StringUtil;
 import scala.Array;
@@ -43,6 +44,16 @@ public class Test {
                 .flatMap(line -> Arrays.asList(line.split(" ")).iterator())
                 .mapToPair(element -> new Tuple2<>(element, 1))
                 .reduceByKey((a, b) -> a + b);
+
+        JavaPairRDD<Integer, String> swappedPair = filteredSigns.mapToPair(new PairFunction<Tuple2<String, Integer>, Integer, String>() {
+            @Override
+            public Tuple2<Integer, String> call(Tuple2<String, Integer> item) throws Exception {
+                return item.swap();
+            }
+
+        });
+
+        swappedPair.sortByKey(false,1).saveAsTextFile("output/ordered_result.txt");
 
         filteredSigns.saveAsTextFile("output/output.txt");
 
