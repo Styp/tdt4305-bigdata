@@ -83,7 +83,6 @@ public class tf_idf {
                 break;
         }
 
-
     }
 
     private static void computerForNeighborhood(JavaRDD<ListingsObj> allListings, String neighborhood) {
@@ -107,10 +106,7 @@ public class tf_idf {
                 .mapToPair(x -> new Tuple2<>(x, 1))
                 .reduceByKey((a, b) -> a + b);
 
-
-        //System.out.println(reduce);
         stringIntegerJavaPairRDD.coalesce(1).saveAsTextFile("neighborhood");
-
 
     }
 
@@ -119,6 +115,7 @@ public class tf_idf {
         ListingsObj ourObject = ListingsHelper.getObjectForListingsId(allListings, listingsId);
 
         Double totalDocumentCount = allListings.mapToDouble(e -> 1).reduce((x, y) -> x+y);
+        //System.out.println("Total Document: " + totalDocumentCount);
 
         JavaRDD<String> eachWord = sc.parallelize((Lists.newArrayList(ourObject.getTermFrequency().keySet())));
         JavaPairRDD<String, Double> idft_value = eachWord.cartesian(allListings).filter(x -> x._2.getTermFrequency().keySet().contains(x._1))
@@ -130,11 +127,17 @@ public class tf_idf {
         for(HashMap.Entry<String, Double> entry : ourObject.getWeightedTermFrequency().entrySet()) {
             wordOccupancyInTuple.add(new Tuple2<>(entry.getKey(), entry.getValue()));
         }
-        JavaRDD<Tuple2<String, Double>> weight_tdf = sc.parallelizePairs(wordOccupancyInTuple).cartesian(idft_value)
-                .filter(x -> x._1._1 == x._2._1)
-                .map(x -> new Tuple2<>(x._1._1, x._1._2 * x._2._2));
 
-        weight_tdf.coalesce(1).saveAsTextFile("output/weighted_tdf");
+        List<Tuple2> resultSet = sc.parallelizePairs(wordOccupancyInTuple).cartesian(idft_value)
+                .filter(x -> x._1._1.equals(x._2._1))
+                .map(x -> new Tuple2(x._1._1, Double.toString(x._1._2 * x._2._2))).sortBy(x -> x._2, false, 1).take(100);
+
+        try {
+            FileWriter.write2("output.tsv", resultSet);
+        } catch (IOException e) {
+            throw new RuntimeException("Can't wirte to file: " + e);
+        }
+
 
     }
 
@@ -144,17 +147,9 @@ public class tf_idf {
                 .flatMap(s -> Arrays.asList(s.split("\n")).iterator())
                 .map( (line) -> {
                     ListingsObj listingsObj = new ListingsObj(line);
-
-                    //Handle description
-                    String[] parts = line.split("\t");
-
-                    //19 is our lucky number - description field
-
-
                     return listingsObj;
                 })
                 .filter((listingsObj -> !listingsObj.isHeader()));
-
          return eachListing;
 
     }

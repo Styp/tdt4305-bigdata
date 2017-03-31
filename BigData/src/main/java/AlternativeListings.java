@@ -93,15 +93,19 @@ public class AlternativeListings {
                 .map(x -> x.id)
                 .collect();
 
-        JavaRDD<Tuple5> filteredRDD = listingsObjsRDD.filter(x -> relevantListingIds.contains(x.listingsId))
+        List<Tuple5> resultSet = listingsObjsRDD.filter(x -> relevantListingIds.contains(x.listingsId))
                 .filter(x -> x.room_type.equals(object.room_type))
                 .filter(x -> x.price <= object.price * (1 + (startupParams.percentage / 100)))
                 .filter(x -> x.getDistance(object) < startupParams.kiloMeters)
                 .map(x -> new Tuple5(x.listingsId, x.name, x.numberOfMatchingAmenities(object), x.getDistance(object), x.price))
-                .sortBy(x -> x._3(), false, 1);
+                .sortBy(x -> x._3(), false, 1).take(startupParams.topN);
 
-        //sc.parallelize(Arrays.asList(filteredRDD.take(startupParams.topN))).
-        filteredRDD.rdd().saveAsTextFile("output/final");
+        try {
+            FileWriter.write5("output.tsv", resultSet);
+        } catch (IOException e) {
+            throw new RuntimeException("Can't wirte to file: " + e);
+        }
+        //filteredRDD.rdd().saveAsTextFile("output/final");
 
 
     }
