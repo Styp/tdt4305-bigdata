@@ -97,7 +97,19 @@ public class tf_idf {
         Double totalDocumentCount = eachListing.mapToDouble(e -> 1).reduce((x, y) -> x+y);
         System.out.println("Total Object count: " + totalDocumentCount);
 
-        ListingsObj ourObject;
+/*        String neighborhoodName = "Belltown";
+        JavaRDD<String> neighborhoodRDD = sc.textFile("input/neighborhood_test.csv");
+        neighborhoodRDD.flatMap(s -> Arrays.asList(s.split("\n")).iterator())
+                .map( (line) -> {
+                    String[] parts = line.split("\t");
+
+                    NeighborhoodObj neighborhoodObj = new NeighborhoodObj();
+                    neighborhoodObj.name = Arrays.asList(parts[19]).toString();
+                    neighborhoodObj.id = -1;
+                }*/
+
+
+/*        ListingsObj ourObject;
         try {
             ourObject = eachListing
                     .filter(listingsObj -> listingsObj.listingsId == startupParams.listingId).first();
@@ -121,7 +133,7 @@ public class tf_idf {
                 .filter(x -> x._1._1 == x._2._1)
                 .map(x -> new Tuple2<>(x._1._1, x._1._2 * x._2._2));
 
-        weight_tdf.coalesce(1).saveAsTextFile("output/weighted_tdf");
+        weight_tdf.coalesce(1).saveAsTextFile("output/weighted_tdf");*/
     }
 
 }

@@ -32,10 +32,10 @@ public class AlternativeListings {
 
                     //Set fields
 
-                    listingsObj.price = integerParse(parts[65].replaceAll("$","").replaceAll(",",""));
+                    listingsObj.price = ParserHelper.integerParse(parts[65].replaceAll("$","").replaceAll(",",""));
                     listingsObj.room_type = parts[81];
-                    listingsObj.longitude = doubleParse(parts[54]);
-                    listingsObj.latitude = doubleParse(parts[51]);
+                    listingsObj.longitude = ParserHelper.doubleParse(parts[54]);
+                    listingsObj.latitude = ParserHelper.doubleParse(parts[51]);
 
                     try {
                         listingsObj.listingsId = Integer.parseInt(parts[43]);
@@ -49,20 +49,6 @@ public class AlternativeListings {
 
         eachListing.saveAsTextFile("output/test");
 
-    }
-
-    public static int integerParse(String s) {
-        try {
-            int i = Integer.parseInt(s);
-            return i;
-        } catch(java.lang.Exception e) {return -1;}
-    }
-
-    public static double doubleParse(String s) {
-        try {
-            double i = Double.parseDouble(s);
-            return i;
-        } catch(java.lang.Exception e) {return -1.0;}
     }
 
     public static void cleanDirectory(){

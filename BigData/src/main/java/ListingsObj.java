@@ -25,15 +25,6 @@ public class ListingsObj implements Serializable {
         return this.description.equals("description");
     }
 
-    @Override
-    public String toString() {
-        return "ListingsObj{" +
-                "listingsId=" + listingsId +
-                ", neighborhoodId=" + neighborhoodId +
-                ", description='" + description + '\'' +
-                '}';
-    }
-
     public int getTotalWords(){
         if(totalWords == -1){
             if(description == null){
@@ -91,4 +82,19 @@ public class ListingsObj implements Serializable {
     }
 
 
+    @Override
+    public String toString() {
+        return "ListingsObj{" +
+                "listingsId=" + listingsId +
+                ", neighborhoodId=" + neighborhoodId +
+                ", description='" + description + '\'' +
+                ", price=" + price +
+                ", longitude=" + longitude +
+                ", latitude=" + latitude +
+                ", room_type='" + room_type + '\'' +
+                ", termFrequencyHashMap=" + termFrequencyHashMap +
+                ", weightedTermFrequencyHashMap=" + weightedTermFrequencyHashMap +
+                ", totalWords=" + totalWords +
+                '}';
+    }
 }
