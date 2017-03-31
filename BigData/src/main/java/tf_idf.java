@@ -91,12 +91,7 @@ public class tf_idf {
         JavaRDD<String> neighborhoodRDD = sc.textFile("input/neighborhood_test.csv");
         List<Integer> listingInNeighborhood = neighborhoodRDD.flatMap(s -> Arrays.asList(s.split("\n")).iterator())
                 .map((line) -> {
-                    String[] parts = line.split("\t");
-
-                    NeighborhoodObj neighborhoodObj = new NeighborhoodObj();
-                    neighborhoodObj.name = parts[1];
-                    neighborhoodObj.id = ParserHelper.integerParse(parts[0]);
-
+                    NeighborhoodObj neighborhoodObj = new NeighborhoodObj(line);
                     return neighborhoodObj;
                 }).filter(x -> x.name.equals(neighborhoodName)).map(x -> x.id).collect();
 

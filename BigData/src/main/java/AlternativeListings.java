@@ -82,12 +82,7 @@ public class AlternativeListings {
         List<Integer> relevantListingIds = calendarFile
                 .flatMap(s -> Arrays.asList(s.split("\n")).iterator())
                 .map((line) -> {
-                    String[] parts = line.split("\t");
-                    CalendarObj calendarObj = new CalendarObj();
-                    calendarObj.id = ParserHelper.integerParse(parts[0]);
-                    calendarObj.date = parts[1];
-                    calendarObj.availability = parts[2].equals("t");
-
+                    CalendarObj calendarObj = new CalendarObj(line);
                     return calendarObj;
                 }).filter(x -> x.date.equals(startupParams.date) && x.availability == true)
                 .map(x -> x.id)
