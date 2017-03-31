@@ -16,6 +16,7 @@ public class ListingsObj implements Serializable {
     public double longitude;
     public double latitude;
     public String room_type;
+    public String[] amenities;
 
     private HashMap<String, Double> termFrequencyHashMap;
     private HashMap<String, Double> weightedTermFrequencyHashMap;
@@ -86,6 +87,7 @@ public class ListingsObj implements Serializable {
     public String toString() {
         return "ListingsObj{" +
                 "listingsId=" + listingsId +
+                ", amenities=" + Arrays.toString(amenities) +
                 ", neighborhoodId=" + neighborhoodId +
                 ", description='" + description + '\'' +
                 ", price=" + price +
