@@ -10,7 +10,7 @@ public class NeighborhoodObj implements Serializable {
     public NeighborhoodObj(String line) {
         String[] parts = line.split("\t");
 
-        this.name = parts[1];
+        this.name = tryToAssign(parts, 1);
         this.id = ParserHelper.integerParse(parts[0]);
     }
 
@@ -20,5 +20,13 @@ public class NeighborhoodObj implements Serializable {
                 "name='" + name + '\'' +
                 ", id=" + id +
                 '}';
+    }
+
+    private String tryToAssign(String parts[], int pos){
+        try{
+            return parts[pos];
+        } catch(ArrayIndexOutOfBoundsException e){
+            return "";
+        }
     }
 }

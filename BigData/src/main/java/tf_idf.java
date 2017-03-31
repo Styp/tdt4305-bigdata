@@ -2,11 +2,14 @@ import com.clearspring.analytics.util.Lists;
 import com.google.common.base.CharMatcher;
 import com.google.common.primitives.Ints;
 import org.apache.commons.io.FileUtils;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import scala.Tuple2;
+import scala.Tuple3;
 
 import java.io.File;
 import java.io.IOException;
@@ -65,6 +68,9 @@ public class tf_idf {
 
     public static void main(String[] args) {
 
+        Logger.getLogger("org").setLevel(Level.OFF);
+        Logger.getLogger("akka").setLevel(Level.OFF);
+
         final StartupParams startupParams = loadParams(args);
         cleanDirectory();
 
@@ -87,30 +93,47 @@ public class tf_idf {
 
     private static void computerForNeighborhood(JavaRDD<ListingsObj> allListings, String neighborhood) {
 
-        String neighborhoodName = "Belltown";
-        JavaRDD<String> neighborhoodRDD = sc.textFile("input/neighborhood_test.csv");
-        List<Integer> listingInNeighborhood = neighborhoodRDD.flatMap(s -> Arrays.asList(s.split("\n")).iterator())
+        JavaRDD<String> neighborhoodRDD = sc.textFile("input/listings_ids_with_neighborhoods.tsv");
+
+        JavaRDD<NeighborhoodObj> neighborhoodObjJavaRDD = neighborhoodRDD.flatMap(s -> Arrays.asList(s.split("\n")).iterator())
                 .map((line) -> {
                     NeighborhoodObj neighborhoodObj = new NeighborhoodObj(line);
                     return neighborhoodObj;
-                }).filter(x -> x.name.equals(neighborhoodName)).map(x -> x.id).collect();
+                });
 
-        JavaPairRDD<String, Integer> stringIntegerJavaPairRDD = sc.parallelize(Arrays.asList(allListings.filter(x -> listingInNeighborhood.contains(x.listingsId))
+        long numberOfNeighborHoods = neighborhoodObjJavaRDD.groupBy(x -> x.name).count();
+
+        List<Integer> listingInNeighborhood = neighborhoodObjJavaRDD.filter(x -> x.name.equals(neighborhood)).map(x -> x.id).collect();
+
+        if(listingInNeighborhood.size() == 0){
+            throw new RuntimeException("No Objects found for Neighboorhood: " + neighborhood);
+        }
+
+        String[] allWordsCollected = allListings.filter(x -> listingInNeighborhood.contains(x.listingsId))
                 .map(x -> x.description)
-                .reduce((a, b) -> a.concat(b)).split(" ")))
-                .mapToPair(x -> new Tuple2<>(x, 1))
-                .reduceByKey((a, b) -> a + b);
+                .reduce((a, b) -> a.concat(b)).split(" ");
 
-        stringIntegerJavaPairRDD.coalesce(1).saveAsTextFile("neighborhood");
+        JavaRDD<String> eachWordInNeighborhood = sc.parallelize(Arrays.asList(allWordsCollected));
 
+        Double totalNumberOfWords = eachWordInNeighborhood.mapToDouble(e -> 1).reduce((x, y) -> x + y);
+
+        JavaPairRDD<String, Double> tftd_value = eachWordInNeighborhood.mapToPair(x -> new Tuple2<>(x, 1))
+                .reduceByKey((a, b) -> a + b)
+                .mapToPair(x -> new Tuple2<>(x._1, x._2 / totalNumberOfWords));
+
+
+
+        //       JavaPairRDD<String, String> stringStringJavaPairRDD = allListings.cartesian(neighborhoodObjJavaRDD).filter(x -> x._1().listingsId == x._2.id).mapToPair(x -> new Tuple2<>(x._2.name, x._1.description));
+        //stringStringJavaPairRDD.coalesce(1).saveAsTextFile("outputTest");
     }
 
     private static void computeForListing(JavaRDD<ListingsObj> allListings, int listingsId) {
 
+        // input/ -l 3254762
+
         ListingsObj ourObject = ListingsHelper.getObjectForListingsId(allListings, listingsId);
 
         Double totalDocumentCount = allListings.mapToDouble(e -> 1).reduce((x, y) -> x+y);
-        //System.out.println("Total Document: " + totalDocumentCount);
 
         JavaRDD<String> eachWord = sc.parallelize((Lists.newArrayList(ourObject.getTermFrequency().keySet())));
         JavaPairRDD<String, Double> idft_value = eachWord.cartesian(allListings).filter(x -> x._2.getTermFrequency().keySet().contains(x._1))
@@ -130,7 +153,7 @@ public class tf_idf {
         try {
             FileWriter.write2("output.tsv", resultSet);
         } catch (IOException e) {
-            throw new RuntimeException("Can't wirte to file: " + e);
+            throw new RuntimeException("Can't write to file: " + e);
         }
 
 
