@@ -122,7 +122,9 @@ public class tf_idf {
 
         JavaRDD<String> eachWord = sc.parallelize((Lists.newArrayList(ourObject.getTermFrequency().keySet())));
         JavaPairRDD<String, Double> idft_value = eachWord.cartesian(allListings).filter(x -> x._2.getTermFrequency().keySet().contains(x._1))
-                .mapToPair(obj -> new Tuple2<>(obj._1, 1)).reduceByKey((a,b) -> a + b).mapToPair(x -> new Tuple2<>(x._1, totalDocumentCount / x._2));
+                .mapToPair(obj -> new Tuple2<>(obj._1, 1))
+                .reduceByKey((a,b) -> a + b)
+                .mapToPair(x -> new Tuple2<>(x._1, totalDocumentCount / x._2));
 
         List<Tuple2<String, Double>> wordOccupancyInTuple = new ArrayList<>();
         for(HashMap.Entry<String, Double> entry : ourObject.getWeightedTermFrequency().entrySet()) {
@@ -141,23 +143,13 @@ public class tf_idf {
         JavaRDD<ListingsObj> eachListing = textFileRdd
                 .flatMap(s -> Arrays.asList(s.split("\n")).iterator())
                 .map( (line) -> {
-                    ListingsObj listingsObj = new ListingsObj();
+                    ListingsObj listingsObj = new ListingsObj(line);
 
                     //Handle description
                     String[] parts = line.split("\t");
 
                     //19 is our lucky number - description field
-                    String tmpString = Arrays.asList(parts[19]).toString();
-                    String tmpStringOnlyLetters = CharMatcher.is(' ')
-                            .or(CharMatcher.javaLetter())
-                            .retainFrom(tmpString).toLowerCase();
-                    listingsObj.description = tmpStringOnlyLetters;
 
-                    try {
-                        listingsObj.listingsId = Integer.parseInt(parts[43]);
-                    } catch(java.lang.NumberFormatException e) {
-                        listingsObj.listingsId = -1;
-                    }
 
                     return listingsObj;
                 })

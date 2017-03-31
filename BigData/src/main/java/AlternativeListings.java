@@ -29,17 +29,9 @@ public class AlternativeListings {
         JavaRDD<ListingsObj> listingsObjsRDD = listingsFile
                 .flatMap(s -> Arrays.asList(s.split("\n")).iterator())
                 .map((line) -> {
-                    ListingsObj listingsObj = new ListingsObj();
+                    ListingsObj listingsObj = new ListingsObj(line);
 
-                    String[] parts = line.split("\t");
 
-                    //Set fields
-                    listingsObj.price = ParserHelper.doubleParse(parts[65].replace("$", "").replace(",", ""));
-                    listingsObj.room_type = parts[81];
-                    listingsObj.longitude = ParserHelper.doubleParse(parts[54]);
-                    listingsObj.latitude = ParserHelper.doubleParse(parts[51]);
-                    listingsObj.amenities = parts[2].split(" ");
-                    listingsObj.listingsId = ParserHelper.integerParse(parts[43]);
 
                     return listingsObj;
                 })
@@ -53,7 +45,7 @@ public class AlternativeListings {
         double longitude = listingsObjsRDD.filter(x -> x.listingsId == id).first().longitude;
         double latitude = listingsObjsRDD.filter(x -> x.listingsId == id).first().latitude;
         double km = 20;
-        String[] amenities = listingsObjsRDD.filter(x -> x.listingsId == id).first().amenities;
+        //String[] amenities = listingsObjsRDD.filter(x -> x.listingsId == id).first().amenities;
 
 
         List<Integer> relevantListingIds = calendarFile

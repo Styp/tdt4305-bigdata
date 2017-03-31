@@ -1,3 +1,5 @@
+import com.google.common.base.CharMatcher;
+
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -16,11 +18,39 @@ public class ListingsObj implements Serializable {
     public double longitude;
     public double latitude;
     public String room_type;
-    public String[] amenities;
+    public List<String> amenities;
 
     private HashMap<String, Double> termFrequencyHashMap;
     private HashMap<String, Double> weightedTermFrequencyHashMap;
     private int totalWords = -1;
+
+    public ListingsObj(String line) {
+
+        String[] parts = line.split("\t");
+
+        //Set fields
+        this.price = ParserHelper.doubleParse(parts[65].replace("$", "").replace(",", ""));
+        this.room_type = parts[81];
+        this.longitude = ParserHelper.doubleParse(parts[54]);
+        this.latitude = ParserHelper.doubleParse(parts[51]);
+
+        String tmpStringOnlyLetters = CharMatcher.is(' ')
+                .or(CharMatcher.is(','))
+                .or(CharMatcher.javaLetter())
+                .retainFrom(parts[2]).toLowerCase();
+
+        amenities = Arrays.asList(tmpStringOnlyLetters.split(","));
+
+        String tmpString = Arrays.asList(parts[19]).toString();
+        String descriptionStringOnlyLetters = CharMatcher.is(' ')
+                .or(CharMatcher.javaLetter())
+                .retainFrom(tmpString).toLowerCase();
+        this.description = descriptionStringOnlyLetters;
+
+        this.listingsId = ParserHelper.integerParse(parts[43]);
+
+    }
+
 
     public boolean isHeader() {
         return this.description.equals("description");
@@ -71,23 +101,15 @@ public class ListingsObj implements Serializable {
         return termFrequency;
     }
 
-  //  public Double getTermOccurance(String term){
-  //      if(!getTermFrequency().containsKey(term)){
-  //          return 0.0;
-  //      }
-  //      return getTermFrequency().get(term);
-  //  }
-
     public boolean containsTerm(String term){
         return getTermFrequency().containsKey(term);
     }
-
 
     @Override
     public String toString() {
         return "ListingsObj{" +
                 "listingsId=" + listingsId +
-                ", amenities=" + Arrays.toString(amenities) +
+                ", amenities=" + amenities.toString() +
                 ", neighborhoodId=" + neighborhoodId +
                 ", description='" + description + '\'' +
                 ", price=" + price +
@@ -98,5 +120,16 @@ public class ListingsObj implements Serializable {
                 ", weightedTermFrequencyHashMap=" + weightedTermFrequencyHashMap +
                 ", totalWords=" + totalWords +
                 '}';
+    }
+
+    public int numberOfMatchingAmenities(ListingsObj listingsObj){
+        int counter = 0;
+        for(String s : this.amenities){
+            if(listingsObj.amenities.contains(s)){
+                counter++;
+            }
+        }
+
+        return counter;
     }
 }
