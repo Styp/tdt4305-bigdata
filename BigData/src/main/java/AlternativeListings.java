@@ -30,21 +30,23 @@ public class AlternativeListings {
                 .flatMap(s -> Arrays.asList(s.split("\n")).iterator())
                 .map((line) -> {
                     ListingsObj listingsObj = new ListingsObj(line);
-
-
-
                     return listingsObj;
                 })
                 .filter(listingsObj -> !listingsObj.isHeader());
 
-        int id = 12607303;
-        String room_type = listingsObjsRDD.filter(x -> x.listingsId == id).first().room_type;
+
+        ListingsObj object = ListingsHelper.getObjectForListingsId(listingsObjsRDD, 12607303);
         String date = "2017-05-31";
         int percentage = 10;
+        double km = 2;
+
+        /*int id = 12607303;
+        String room_type = listingsObjsRDD.filter(x -> x.listingsId == id).first().room_type;
+
         double price = listingsObjsRDD.filter(x -> x.listingsId == id).first().price;
         double longitude = listingsObjsRDD.filter(x -> x.listingsId == id).first().longitude;
         double latitude = listingsObjsRDD.filter(x -> x.listingsId == id).first().latitude;
-        double km = 20;
+        */
         //String[] amenities = listingsObjsRDD.filter(x -> x.listingsId == id).first().amenities;
 
 
@@ -61,12 +63,13 @@ public class AlternativeListings {
                 }).filter(x -> x.date.equals(date) && x.availability == true)
                 .map(x -> x.id)
                 .collect();
-        //                .filter(x -> x._2().equals(date)).filter(x -> x._3().equals(true)).map(x -> x._1());
 
-        JavaRDD<ListingsObj> filter = listingsObjsRDD.filter(x -> relevantListingIds.contains(x.listingsId))
-                .filter(x -> x.room_type.equals(room_type))
-                .filter(x -> x.price <= price * (1 + (percentage / 100)))
-                .filter(x -> getDistance(longitude,x.longitude,latitude,x.latitude) < km);
+        JavaRDD<Tuple5> filter = listingsObjsRDD.filter(x -> relevantListingIds.contains(x.listingsId))
+                .filter(x -> x.room_type.equals(object.room_type))
+                .filter(x -> x.price <= object.price * (1 + (percentage / 100)))
+                .filter(x -> x.getDistance(object) < km)
+                .map(x -> new Tuple5(x.listingsId, x.name, x.numberOfMatchingAmenities(object), x.getDistance(object), x.price))
+                .sortBy(x -> x._3(), false, 1);
 
         filter.coalesce(1).saveAsTextFile("output/test");
 
@@ -79,14 +82,5 @@ public class AlternativeListings {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    public static double getDistance(double long1,double long2, double lat1, double lat2) {
-        double dlon = long2 - long1;
-        double dlat = lat2 - lat1;
-        double a = (Math.sin(dlat / 2) * Math.sin(dlat / 2)) + Math.cos(lat1) * Math.cos(lat2) * (Math.sin(dlon / 2) * Math.sin(dlon / 2));
-        double c = 2 * Math.asin(Math.sqrt(a));
-        int r = 6371;
-        return c * r;
     }
 }

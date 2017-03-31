@@ -1,5 +1,6 @@
 import com.google.common.base.CharMatcher;
 
+import javax.swing.text.html.parser.Parser;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -19,6 +20,8 @@ public class ListingsObj implements Serializable {
     public double latitude;
     public String room_type;
     public List<String> amenities;
+    public double distance;
+    public String name;
 
     private HashMap<String, Double> termFrequencyHashMap;
     private HashMap<String, Double> weightedTermFrequencyHashMap;
@@ -31,8 +34,9 @@ public class ListingsObj implements Serializable {
         //Set fields
         this.price = ParserHelper.doubleParse(parts[65].replace("$", "").replace(",", ""));
         this.room_type = parts[81];
-        this.longitude = ParserHelper.doubleParse(parts[54]);
-        this.latitude = ParserHelper.doubleParse(parts[51]);
+        this.longitude = ParserHelper.doubleParse(parts[54]) * Math.PI / 180;
+        this.latitude = ParserHelper.doubleParse(parts[51]) * Math.PI / 180;
+        this.name = parts[60];
 
         String tmpStringOnlyLetters = CharMatcher.is(' ')
                 .or(CharMatcher.is(','))
@@ -131,5 +135,13 @@ public class ListingsObj implements Serializable {
         }
 
         return counter;
+    }
+    public double getDistance(ListingsObj obj) {
+        double dlon = longitude - obj.longitude;
+        double dlat = latitude - obj.latitude;
+        double a = (Math.sin(dlat / 2) * Math.sin(dlat / 2)) + Math.cos(obj.latitude) * Math.cos(latitude) * (Math.sin(dlon / 2) * Math.sin(dlon / 2));
+        double c = 2 * Math.asin(Math.sqrt(a));
+        int r = 6371;
+        return c * r;
     }
 }
