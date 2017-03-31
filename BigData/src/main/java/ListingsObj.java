@@ -12,6 +12,10 @@ public class ListingsObj implements Serializable {
     public int listingsId;
     public int neighborhoodId;
     public String description;
+    public double price;
+    public double longitude;
+    public double latitude;
+    public String room_type;
 
     private HashMap<String, Double> termFrequencyHashMap;
     private HashMap<String, Double> weightedTermFrequencyHashMap;
@@ -85,5 +89,6 @@ public class ListingsObj implements Serializable {
     public boolean containsTerm(String term){
         return getTermFrequency().containsKey(term);
     }
+
 
 }
