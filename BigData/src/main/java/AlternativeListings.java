@@ -1,5 +1,6 @@
 import com.google.common.base.CharMatcher;
 import com.google.common.collect.Lists;
+import com.google.common.primitives.Ints;
 import org.apache.commons.io.FileUtils;
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
@@ -17,8 +18,48 @@ import java.lang.Double;
 import java.util.*;
 public class AlternativeListings {
 
+    public static StartupParams loadParams(String[] args){
+        StartupParams params = new StartupParams();
+
+        if(args.length != 5){
+            throw new RuntimeException("Number of Arguments wrong");
+        }
+
+        Integer listingId = Ints.tryParse(args[0]);
+        if(listingId == null){
+            throw new RuntimeException("ListingId is not a valid number");
+        } else{
+            params.listingId = listingId;
+        }
+
+        params.date = args[1];
+
+        Double percentage = Double.parseDouble(args[2]);
+        if(percentage == null){
+            throw new RuntimeException("Percentage is not a valid number");
+        } else{
+            params.percentage = percentage;
+        }
+
+        Double kiloMeters = Double.parseDouble(args[3]);
+        if(kiloMeters == null){
+            throw new RuntimeException("Kilo meters is not a valid number");
+        } else{
+            params.kiloMeters = kiloMeters;
+        }
+
+        Integer topN = Integer.parseInt(args[4]);
+        if(topN == null){
+            throw new RuntimeException("Top N is not a valid number");
+        } else{
+            params.topN = topN;
+        }
+        return params;
+    }
+
 
     public static void main(String[] args) {
+        final StartupParams startupParams = loadParams(args);
         cleanDirectory();
 
         JavaSparkContext sc = new JavaSparkContext(new SparkConf().setAppName("SparkJoins").setMaster("local"));
@@ -35,19 +76,7 @@ public class AlternativeListings {
                 .filter(listingsObj -> !listingsObj.isHeader());
 
 
-        ListingsObj object = ListingsHelper.getObjectForListingsId(listingsObjsRDD, 12607303);
-        String date = "2017-05-31";
-        int percentage = 10;
-        double km = 2;
-
-        /*int id = 12607303;
-        String room_type = listingsObjsRDD.filter(x -> x.listingsId == id).first().room_type;
-
-        double price = listingsObjsRDD.filter(x -> x.listingsId == id).first().price;
-        double longitude = listingsObjsRDD.filter(x -> x.listingsId == id).first().longitude;
-        double latitude = listingsObjsRDD.filter(x -> x.listingsId == id).first().latitude;
-        */
-        //String[] amenities = listingsObjsRDD.filter(x -> x.listingsId == id).first().amenities;
+        ListingsObj object = ListingsHelper.getObjectForListingsId(listingsObjsRDD, startupParams.listingId);
 
 
         List<Integer> relevantListingIds = calendarFile
@@ -60,18 +89,20 @@ public class AlternativeListings {
                     calendarObj.availability = parts[2].equals("t");
 
                     return calendarObj;
-                }).filter(x -> x.date.equals(date) && x.availability == true)
+                }).filter(x -> x.date.equals(startupParams.date) && x.availability == true)
                 .map(x -> x.id)
                 .collect();
 
-        JavaRDD<Tuple5> filter = listingsObjsRDD.filter(x -> relevantListingIds.contains(x.listingsId))
+        JavaRDD<Tuple5> filteredRDD = listingsObjsRDD.filter(x -> relevantListingIds.contains(x.listingsId))
                 .filter(x -> x.room_type.equals(object.room_type))
-                .filter(x -> x.price <= object.price * (1 + (percentage / 100)))
-                .filter(x -> x.getDistance(object) < km)
+                .filter(x -> x.price <= object.price * (1 + (startupParams.percentage / 100)))
+                .filter(x -> x.getDistance(object) < startupParams.kiloMeters)
                 .map(x -> new Tuple5(x.listingsId, x.name, x.numberOfMatchingAmenities(object), x.getDistance(object), x.price))
                 .sortBy(x -> x._3(), false, 1);
 
-        filter.coalesce(1).saveAsTextFile("output/test");
+        //sc.parallelize(Arrays.asList(filteredRDD.take(startupParams.topN))).
+        filteredRDD.rdd().saveAsTextFile("output/final");
+
 
     }
 
