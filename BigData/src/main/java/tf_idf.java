@@ -1,5 +1,6 @@
 import com.google.common.base.CharMatcher;
 import com.google.common.collect.Lists;
+import com.google.common.primitives.Ints;
 import org.apache.commons.io.FileUtils;
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
@@ -15,7 +16,7 @@ import java.util.*;
 
 public class tf_idf {
 
-    public StartupParams assertArgs(String[] args){
+    public static StartupParams loadParams(String[] args){
         StartupParams params = new StartupParams();
 
         if(args.length != 3){
@@ -25,21 +26,27 @@ public class tf_idf {
         String filePath = args[0] + "listings_us.csv";
         File file = new File(filePath);
         if (file.canRead() == false){
-            throw new RuntimeException("Listings_csv.us - could not be found!");
+            throw new RuntimeException("listings_csv.us - could not be found! " + filePath);
         }
         params.filePath = filePath;
 
         String runMode = args[1];
-        if(runMode == "-l"){
-
-        } else if(runMode == "-n"){
-
+        if(runMode.equals("-l")){
+            params.runMode = StartupParams.Mode.LISTING;
+        } else if(runMode.equals("-n")){
+            params.runMode = StartupParams.Mode.NEIGHBOURHOOD;
         } else{
             throw new RuntimeException("Runtime Mode Unknown - Parameter should be -l / -n!");
         }
 
-        return params;
+        Integer listingId = Ints.tryParse(args[2]);
+        if(listingId == null){
+            throw new RuntimeException("ListingId is not a valid number");
+        } else{
+            params.listingId = listingId;
+        }
 
+        return params;
     }
 
     public static void cleanDirectory(){
@@ -53,12 +60,12 @@ public class tf_idf {
 
     public static void main(String[] args) {
 
-        assertArgs(args);
+        final StartupParams startupParams = loadParams(args);
         cleanDirectory();
 
         JavaSparkContext sc = new JavaSparkContext(new SparkConf().setAppName("SparkJoins").setMaster("local"));
 
-        JavaRDD<String> textFile = sc.textFile("input/listings_us.csv");
+        JavaRDD<String> textFile = sc.textFile(startupParams.filePath);
 
         JavaRDD<ListingsObj> eachListing = textFile
                 .flatMap(s -> Arrays.asList(s.split("\n")).iterator())
@@ -90,10 +97,13 @@ public class tf_idf {
         Double totalDocumentCount = eachListing.mapToDouble(e -> 1).reduce((x, y) -> x+y);
         System.out.println("Total Object count: " + totalDocumentCount);
 
-
-        int ourListingId = 3254762;
-        ListingsObj ourObject = eachListing
-                .filter(listingsObj -> listingsObj.listingsId == ourListingId).first();
+        ListingsObj ourObject;
+        try {
+            ourObject = eachListing
+                    .filter(listingsObj -> listingsObj.listingsId == startupParams.listingId).first();
+        } catch(UnsupportedOperationException e){
+            throw new RuntimeException("Listings ID NOT FOUND!");
+        }
 
 
         JavaRDD<String> eachWord = sc.parallelize((Lists.newArrayList(ourObject.getTermFrequency().keySet())));
