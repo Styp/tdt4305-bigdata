@@ -1,11 +1,9 @@
 import com.google.common.base.CharMatcher;
+import com.google.common.collect.Lists;
 
 import javax.swing.text.html.parser.Parser;
 import java.io.Serializable;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Created by martin on 30.03.17.
@@ -55,6 +53,12 @@ public class ListingsObj implements Serializable {
 
     }
 
+    public Set<String> getDescriptionAsSet(){
+        List<String> descriptionList = new ArrayList<String>(Arrays.asList(this.description.split(" ")));
+        Set<String> descriptionSet = new HashSet<>(descriptionList);
+
+        return descriptionSet;
+    }
 
     public boolean isHeader() {
         return this.description.equals("description");

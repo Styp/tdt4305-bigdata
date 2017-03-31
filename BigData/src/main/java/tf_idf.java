@@ -122,9 +122,15 @@ public class tf_idf {
                 .mapToPair(x -> new Tuple2<>(x._1, x._2 / totalNumberOfWords));
 
 
+        JavaPairRDD<String, Set<String>> stringSetJavaPairRDD = allListings.cartesian(neighborhoodObjJavaRDD).filter(x -> x._1().listingsId == x._2.id)
+                .mapToPair(x -> new Tuple2<>(x._2.name, x._1.getDescriptionAsSet())).reduceByKey((a, b) -> {
+                    Set<String> tmpSet = new HashSet<>();
+                    tmpSet.addAll(a);
+                    tmpSet.addAll(b);
+                    return tmpSet;
+                });
 
-        //       JavaPairRDD<String, String> stringStringJavaPairRDD = allListings.cartesian(neighborhoodObjJavaRDD).filter(x -> x._1().listingsId == x._2.id).mapToPair(x -> new Tuple2<>(x._2.name, x._1.description));
-        //stringStringJavaPairRDD.coalesce(1).saveAsTextFile("outputTest");
+        stringSetJavaPairRDD.coalesce(1).saveAsTextFile("output");
     }
 
     private static void computeForListing(JavaRDD<ListingsObj> allListings, int listingsId) {
@@ -155,7 +161,6 @@ public class tf_idf {
         } catch (IOException e) {
             throw new RuntimeException("Can't write to file: " + e);
         }
-
 
     }
 

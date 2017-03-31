@@ -16,3 +16,14 @@ dependencies {
     compile group: 'com.google.guava', name: 'guava', version: '21.0'
     compile group: 'org.apache.spark', name: 'spark-core_2.11', version: '2.1.0'
 }
+
+task fatJar(type: Jar) {
+    manifest {
+        attributes 'Implementation-Title': 'Gradle Jar File Example',
+                'Implementation-Version': version,
+                'Main-Class': 'AlternativeListings'
+    }
+    baseName = project.name + '-all'
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
