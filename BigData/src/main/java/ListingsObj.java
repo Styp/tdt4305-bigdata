@@ -11,7 +11,7 @@ public class ListingsObj implements Serializable {
 
     public int listingsId;
     public int neighborhoodId;
-    public String description;
+    public String description = "";
     public double price;
     public double longitude;
     public double latitude;
@@ -21,7 +21,7 @@ public class ListingsObj implements Serializable {
     private HashMap<String, Double> weightedTermFrequencyHashMap;
     private int totalWords = -1;
 
-    public boolean isHeader(){
+    public boolean isHeader() {
         return this.description.equals("description");
     }
 

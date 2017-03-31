@@ -32,7 +32,7 @@ public class AlternativeListings {
 
                     //Set fields
 
-                    listingsObj.price = ParserHelper.integerParse(parts[65].replaceAll("$","").replaceAll(",",""));
+                    listingsObj.price = ParserHelper.doubleParse(parts[65].replaceAll("$","").replaceAll(",",""));
                     listingsObj.room_type = parts[81];
                     listingsObj.longitude = ParserHelper.doubleParse(parts[54]);
                     listingsObj.latitude = ParserHelper.doubleParse(parts[51]);
