@@ -1,9 +1,8 @@
+import com.clearspring.analytics.util.Lists;
 import com.google.common.base.CharMatcher;
-import com.google.common.collect.Lists;
 import com.google.common.primitives.Ints;
 import org.apache.commons.io.FileUtils;
 import org.apache.spark.SparkConf;
-import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -15,6 +14,8 @@ import java.util.*;
 
 
 public class tf_idf {
+
+    public static JavaSparkContext sc;
 
     public static StartupParams loadParams(String[] args){
         StartupParams params = new StartupParams();
@@ -33,17 +34,21 @@ public class tf_idf {
         String runMode = args[1];
         if(runMode.equals("-l")){
             params.runMode = StartupParams.Mode.LISTING;
+
+            Integer listingId = Ints.tryParse(args[2]);
+            if(listingId == null){
+                throw new RuntimeException("ListingId is not a valid number");
+            } else{
+                params.listingId = listingId;
+            }
+
         } else if(runMode.equals("-n")){
             params.runMode = StartupParams.Mode.NEIGHBOURHOOD;
+
+            String neighborhood = args[2];
+            params.neighborhood = neighborhood;
         } else{
             throw new RuntimeException("Runtime Mode Unknown - Parameter should be -l / -n!");
-        }
-
-        Integer listingId = Ints.tryParse(args[2]);
-        if(listingId == null){
-            throw new RuntimeException("ListingId is not a valid number");
-        } else{
-            params.listingId = listingId;
         }
 
         return params;
@@ -63,43 +68,29 @@ public class tf_idf {
         final StartupParams startupParams = loadParams(args);
         cleanDirectory();
 
-        JavaSparkContext sc = new JavaSparkContext(new SparkConf().setAppName("SparkJoins").setMaster("local"));
+        sc = new JavaSparkContext(new SparkConf().setAppName("SparkJoins").setMaster("local"));
 
-        JavaRDD<String> textFile = sc.textFile(startupParams.filePath);
+        JavaRDD<String> textFileRDD = sc.textFile(startupParams.filePath);
+        JavaRDD<ListingsObj> allListings = generateListingsRDDFromTextFile(textFileRDD);
 
-        JavaRDD<ListingsObj> eachListing = textFile
-                .flatMap(s -> Arrays.asList(s.split("\n")).iterator())
-                .map( (line) -> {
-                ListingsObj listingsObj = new ListingsObj();
+        switch (startupParams.runMode){
+            case LISTING:
+                computeForListing(allListings, startupParams.listingId);
+                break;
 
-                //Handle description
-                String[] parts = line.split("\t");
+            case NEIGHBOURHOOD:
+                computerForNeighborhood(allListings, startupParams.neighborhood);
+                break;
+        }
 
-                //19 is our lucky number - description field
-                String tmpString = Arrays.asList(parts[19]).toString();
-                String tmpStringOnlyLetters = CharMatcher.is(' ')
-                        .or(CharMatcher.javaLetter())
-                        .retainFrom(tmpString).toLowerCase();
-                listingsObj.description = tmpStringOnlyLetters;
 
-                try {
-                    listingsObj.listingsId = Integer.parseInt(parts[43]);
-                } catch(java.lang.NumberFormatException e) {
-                    listingsObj.listingsId = -1;
-                }
+    }
 
-                return listingsObj;
-                })
-                .filter((listingsObj -> !listingsObj.isHeader()));
-
-        eachListing.saveAsTextFile("output/output.txt");
-
-        Double totalDocumentCount = eachListing.mapToDouble(e -> 1).reduce((x, y) -> x+y);
-        System.out.println("Total Object count: " + totalDocumentCount);
+    private static void computerForNeighborhood(JavaRDD<ListingsObj> allListings, String neighborhood) {
 
         String neighborhoodName = "Belltown";
         JavaRDD<String> neighborhoodRDD = sc.textFile("input/neighborhood_test.csv");
-        JavaRDD<NeighborhoodObj> output = neighborhoodRDD.flatMap(s -> Arrays.asList(s.split("\n")).iterator())
+        List<Integer> listingInNeighborhood = neighborhoodRDD.flatMap(s -> Arrays.asList(s.split("\n")).iterator())
                 .map((line) -> {
                     String[] parts = line.split("\t");
 
@@ -108,26 +99,30 @@ public class tf_idf {
                     neighborhoodObj.id = ParserHelper.integerParse(parts[0]);
 
                     return neighborhoodObj;
-                }).filter(x -> x.name.equals(neighborhoodName));
+                }).filter(x -> x.name.equals(neighborhoodName)).map(x -> x.id).collect();
 
-        output.coalesce(1).saveAsTextFile("neighborhood");
+        JavaPairRDD<String, Integer> stringIntegerJavaPairRDD = sc.parallelize(Arrays.asList(allListings.filter(x -> listingInNeighborhood.contains(x.listingsId))
+                .map(x -> x.description)
+                .reduce((a, b) -> a.concat(b)).split(" ")))
+                .mapToPair(x -> new Tuple2<>(x, 1))
+                .reduceByKey((a, b) -> a + b);
 
 
-/*        ListingsObj ourObject;
-        try {
-            ourObject = eachListing
-                    .filter(listingsObj -> listingsObj.listingsId == startupParams.listingId).first();
-        } catch(UnsupportedOperationException e){
-            throw new RuntimeException("Listings ID NOT FOUND!");
-        }
+        //System.out.println(reduce);
+        stringIntegerJavaPairRDD.coalesce(1).saveAsTextFile("neighborhood");
 
+
+    }
+
+    private static void computeForListing(JavaRDD<ListingsObj> allListings, int listingsId) {
+
+        ListingsObj ourObject = ListingsHelper.getObjectForListingsId(allListings, listingsId);
+
+        Double totalDocumentCount = allListings.mapToDouble(e -> 1).reduce((x, y) -> x+y);
 
         JavaRDD<String> eachWord = sc.parallelize((Lists.newArrayList(ourObject.getTermFrequency().keySet())));
-        JavaPairRDD<String, Double> idft_value = eachWord.cartesian(eachListing).filter(x -> x._2.getTermFrequency().keySet().contains(x._1))
+        JavaPairRDD<String, Double> idft_value = eachWord.cartesian(allListings).filter(x -> x._2.getTermFrequency().keySet().contains(x._1))
                 .mapToPair(obj -> new Tuple2<>(obj._1, 1)).reduceByKey((a,b) -> a + b).mapToPair(x -> new Tuple2<>(x._1, totalDocumentCount / x._2));
-
-        idft_value.coalesce(1).saveAsTextFile("output/output_string_long.txt");
-
 
         List<Tuple2<String, Double>> wordOccupancyInTuple = new ArrayList<>();
         for(HashMap.Entry<String, Double> entry : ourObject.getWeightedTermFrequency().entrySet()) {
@@ -137,7 +132,39 @@ public class tf_idf {
                 .filter(x -> x._1._1 == x._2._1)
                 .map(x -> new Tuple2<>(x._1._1, x._1._2 * x._2._2));
 
-        weight_tdf.coalesce(1).saveAsTextFile("output/weighted_tdf");*/
+        weight_tdf.coalesce(1).saveAsTextFile("output/weighted_tdf");
+
+    }
+
+    private static JavaRDD<ListingsObj> generateListingsRDDFromTextFile(JavaRDD<String> textFileRdd) {
+
+        JavaRDD<ListingsObj> eachListing = textFileRdd
+                .flatMap(s -> Arrays.asList(s.split("\n")).iterator())
+                .map( (line) -> {
+                    ListingsObj listingsObj = new ListingsObj();
+
+                    //Handle description
+                    String[] parts = line.split("\t");
+
+                    //19 is our lucky number - description field
+                    String tmpString = Arrays.asList(parts[19]).toString();
+                    String tmpStringOnlyLetters = CharMatcher.is(' ')
+                            .or(CharMatcher.javaLetter())
+                            .retainFrom(tmpString).toLowerCase();
+                    listingsObj.description = tmpStringOnlyLetters;
+
+                    try {
+                        listingsObj.listingsId = Integer.parseInt(parts[43]);
+                    } catch(java.lang.NumberFormatException e) {
+                        listingsObj.listingsId = -1;
+                    }
+
+                    return listingsObj;
+                })
+                .filter((listingsObj -> !listingsObj.isHeader()));
+
+         return eachListing;
+
     }
 
 }
