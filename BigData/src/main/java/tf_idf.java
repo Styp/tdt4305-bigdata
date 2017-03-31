@@ -97,16 +97,20 @@ public class tf_idf {
         Double totalDocumentCount = eachListing.mapToDouble(e -> 1).reduce((x, y) -> x+y);
         System.out.println("Total Object count: " + totalDocumentCount);
 
-/*        String neighborhoodName = "Belltown";
+        String neighborhoodName = "Belltown";
         JavaRDD<String> neighborhoodRDD = sc.textFile("input/neighborhood_test.csv");
-        neighborhoodRDD.flatMap(s -> Arrays.asList(s.split("\n")).iterator())
-                .map( (line) -> {
+        JavaRDD<NeighborhoodObj> output = neighborhoodRDD.flatMap(s -> Arrays.asList(s.split("\n")).iterator())
+                .map((line) -> {
                     String[] parts = line.split("\t");
 
                     NeighborhoodObj neighborhoodObj = new NeighborhoodObj();
-                    neighborhoodObj.name = Arrays.asList(parts[19]).toString();
-                    neighborhoodObj.id = -1;
-                }*/
+                    neighborhoodObj.name = parts[1];
+                    neighborhoodObj.id = ParserHelper.integerParse(parts[0]);
+
+                    return neighborhoodObj;
+                }).filter(x -> x.name.equals(neighborhoodName));
+
+        output.coalesce(1).saveAsTextFile("neighborhood");
 
 
 /*        ListingsObj ourObject;
